@@ -51,6 +51,14 @@ typedef struct {
 
 } USB_XpadReport_Data_t;
 
+typedef struct {
+    uint8_t UNUSED_0;
+    uint8_t LENGTH; // always 0x06
+
+    uint16_t LEFT_RUMBLE;
+    uint16_t RIGHT_RUMBLE;
+} USB_XpadRumble_Data_t;
+
 void setup(void);
 
 void EVENT_USB_Device_Connect(void);
