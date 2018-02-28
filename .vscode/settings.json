@@ -1,5 +1,17 @@
 {
     "files.associations": {
-        "usbmode.h": "c"
+        "usbmode.h": "c",
+        "serial.h": "c",
+        "serial_avr8.h": "c",
+        "io.h": "c",
+        "serialgamepad.h": "c",
+        "xpademu.h": "c",
+        "descriptors.h": "c",
+        "usb.h": "c",
+        "string.h": "c",
+        "power.h": "c",
+        "common.h": "c",
+        "stdbool.h": "c",
+        "datatypes.h": "c"
     }
 }

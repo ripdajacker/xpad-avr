@@ -1,5 +1,7 @@
-#include "XpadEmu.h"
-#include "LUFA/Drivers/Peripheral/Serial.h"
+#include <SerialGamepad.h>
+#include <XpadEmu.h>
+#include <LUFA/Drivers/Peripheral/Serial.h>
+
 
 static const uint8_t desc1[] = {0x12, 0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x40};
 static const uint8_t desc2[] = {0x09, 0x02, 0x29, 0x00, 0x01, 0x01, 0x00, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00, 0x09, 0x21, 0x10, 0x01, 0x00, 0x01, 0x22, 0x65, 0x00, 0x07, 0x05, 0x81, 0x03, 0x40, 0x00, 0x04, 0x07, 0x05, 0x02, 0x03, 0x40, 0x00, 0x04};
@@ -7,11 +9,13 @@ static const uint8_t desc3[] = {0x10, 0x42, 0x00, 0x01, 0x01, 0x01, 0x14, 0x06, 
 
 
 void printControlRequest(char *string) {
+    #ifdef DEBUG
     printf(string);
     printf(" 0x%x 0x%x 0x%x 0x%x 0x%x\n",USB_ControlRequest.bmRequestType, USB_ControlRequest.bRequest, USB_ControlRequest.wValue, USB_ControlRequest.wIndex, USB_ControlRequest.wLength);
+    #endif
 }
 
-static uint8_t PrevXpadHIDReportBuffer[sizeof(USB_XpadReport_Data_t)];
+static uint8_t PrevXpadHIDReportBuffer[2 * sizeof(USB_XpadReport_Data_t)];
 
 USB_ClassInfo_HID_Device_t Xpad_HID_Interface =
 {
@@ -29,14 +33,24 @@ USB_ClassInfo_HID_Device_t Xpad_HID_Interface =
 };
 
 int8_t state = 1;
-unsigned long tick = 0;
+unsigned long TIME_MILLIS = 0;
+unsigned long lastTimestamp = 0;
+unsigned long timestampLastReport = 0;
+USB_XpadReport_Data_t lastReport;
 
 void flash_led(void) {
-    if (tick > (unsigned long) 3000) {
-        state = !state;
-        tick = 0;
+    if (TIME_MILLIS > lastTimestamp + (unsigned long) 1000) {
+        state++;
+        lastTimestamp = TIME_MILLIS;
+
+        if(state > 8) {
+            state = 0;
+        }
+
+        printf("i: 0x%x\n", SERIAL_GetIndex());
+
         PORTC = 0;
-        if (state) {
+        if (state % 2 == 0) {
             PORTC |= 1 << 7;
         }
     }
@@ -64,10 +78,11 @@ void setup(void) {
     clock_prescale_set(clock_div_1);
 
     DDRC |= (1 << 7);
-    sei();
 
     Serial_Init(115200, false);
+    UCSR1B = UCSR1B | (1 << RXCIE1);
     Serial_CreateStream(NULL);
+    sei();
 
     USB_Init();
 }
@@ -85,13 +100,13 @@ void EVENT_USB_Device_ConfigurationChanged(void) {
 void EVENT_USB_Device_ControlRequest(void) {
     printControlRequest("Processing req");
     if (USB_ControlRequest.bRequest == 0x6 ) {
-        
         if(USB_ControlRequest.bmRequestType == 0x80 && USB_ControlRequest.wValue == 0x100) {
             Endpoint_ClearSETUP();
             Endpoint_Write_Control_Stream_LE(&desc1, USB_ControlRequest.wLength);
             Endpoint_ClearOUT();
             return;
         }
+
         if (USB_ControlRequest.bmRequestType == 0xC1 && USB_ControlRequest.wValue == 0x4200) {
             Endpoint_ClearSETUP();
             switch(USB_ControlRequest.wLength) {
@@ -114,23 +129,34 @@ void EVENT_USB_Device_ControlRequest(void) {
 
 void EVENT_USB_Device_StartOfFrame(void) {
     HID_Device_MillisecondElapsed(&Xpad_HID_Interface);
-    tick++;
+    TIME_MILLIS++;
 }
 
 
 bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t *const HIDInterfaceInfo, uint8_t *const ReportID, const uint8_t ReportType, void *ReportData,uint16_t *const ReportSize) {
     USB_XpadReport_Data_t *XpadReport = (USB_XpadReport_Data_t *) ReportData;
-    if (state) {
-        XpadReport->BUTTON_A = 255;
-    }   else {
-        XpadReport->BUTTON_B = 255;        
+ 
+    if(SERIAL_IsReportReady()) {
+        
+        SERIAL_ReadReport(&lastReport);
+     
+        printf("Got a report A: %x, B: %x\n", lastReport.BUTTON_A, lastReport.BUTTON_B);
+
+        timestampLastReport = TIME_MILLIS;
+    }
+    
+    if(timestampLastReport != 0) {
+        if(TIME_MILLIS < timestampLastReport + (unsigned long) 1000) {
+             printf("Copying!\n");
+       
+            memcpy(XpadReport, &lastReport, sizeof(&lastReport));
+        }
     }
 
     XpadReport->LENGTH =  0x14;
-    XpadReport->UNUSED_0 = 0;
     
     *ReportSize = 0x14;
-    printControlRequest("Get report");
+    
     return false;
 }
     
@@ -138,9 +164,5 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t *const HIDIn
 void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t *const HIDInterfaceInfo, const uint8_t ReportID, const uint8_t ReportType, const void *ReportData, const uint16_t ReportSize) {
     printControlRequest("Set report");
     if(ReportSize == 6) {
-        printf("Lets get ready to rumble\n");
     }                        
 }
-
-
-
