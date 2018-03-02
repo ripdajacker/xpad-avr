@@ -8,10 +8,11 @@
 #include <avr/power.h>
 #include <avr/interrupt.h>
 
-#include <LUFA/Drivers/USB/USB.h>
-
 #include <Descriptors.h>
 #include <DataTypes.h>
+
+#include <LUFA/Drivers/USB/USB.h>
+#include <LUFA/Platform/Platform.h>
 
 
 void setup(void);

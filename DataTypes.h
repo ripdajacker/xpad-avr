@@ -15,7 +15,6 @@ typedef struct {
     
     uint8_t BUTTON_START :1; 
     uint8_t BUTTON_BACK  :1; 
-
     uint8_t BUTTON_L3    :1; 
     uint8_t BUTTON_R3    :1; 
 

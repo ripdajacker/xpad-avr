@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SERIAL_REPORT_LEN  0x15
+#define SERIAL_REPORT_LEN 13
 
 uint8_t SERIAL_GetIndex(void);
 

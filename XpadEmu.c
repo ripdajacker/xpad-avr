@@ -23,9 +23,9 @@ USB_ClassInfo_HID_Device_t Xpad_HID_Interface =
     {
         .InterfaceNumber              = 0,
         .ReportINEndpoint             = {
-            .Address              = (ENDPOINT_DIR_IN | 1),
-            .Size                 = 0x14,
-            .Banks                = 1,
+            .Address                  = (ENDPOINT_DIR_IN | 1),
+            .Size                     = 0x14,
+            .Banks                    = 1,
         },
         .PrevReportINBuffer           = PrevXpadHIDReportBuffer,
         .PrevReportINBufferSize       = sizeof(PrevXpadHIDReportBuffer),
@@ -36,7 +36,7 @@ int8_t state = 1;
 unsigned long TIME_MILLIS = 0;
 unsigned long lastTimestamp = 0;
 unsigned long timestampLastReport = 0;
-USB_XpadReport_Data_t lastReport;
+USB_XpadReport_Data_t lastReportReceived;
 
 void flash_led(void) {
     if (TIME_MILLIS > lastTimestamp + (unsigned long) 1000) {
@@ -47,7 +47,7 @@ void flash_led(void) {
             state = 0;
         }
 
-        printf("i: 0x%x\n", SERIAL_GetIndex());
+        printf("i: 0x%x\n", SERIAL_GetIndex());        
 
         PORTC = 0;
         if (state % 2 == 0) {
@@ -78,10 +78,10 @@ void setup(void) {
     clock_prescale_set(clock_div_1);
 
     DDRC |= (1 << 7);
-
-    Serial_Init(115200, false);
-    UCSR1B = UCSR1B | (1 << RXCIE1);
+    
+    Serial_Init(9600, false);
     Serial_CreateStream(NULL);
+    UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
     sei();
 
     USB_Init();
@@ -136,27 +136,22 @@ void EVENT_USB_Device_StartOfFrame(void) {
 bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t *const HIDInterfaceInfo, uint8_t *const ReportID, const uint8_t ReportType, void *ReportData,uint16_t *const ReportSize) {
     USB_XpadReport_Data_t *XpadReport = (USB_XpadReport_Data_t *) ReportData;
  
-    if(SERIAL_IsReportReady()) {
-        
-        SERIAL_ReadReport(&lastReport);
+    if(SERIAL_IsReportReady()) {        
+        SERIAL_ReadReport(&lastReportReceived);
      
-        printf("Got a report A: %x, B: %x\n", lastReport.BUTTON_A, lastReport.BUTTON_B);
+        printf("Got a report A: %x, B: %x\n", lastReportReceived.BUTTON_A, lastReportReceived.BUTTON_B);
 
         timestampLastReport = TIME_MILLIS;
     }
     
     if(timestampLastReport != 0) {
-        if(TIME_MILLIS < timestampLastReport + (unsigned long) 1000) {
-             printf("Copying!\n");
-       
-            memcpy(XpadReport, &lastReport, sizeof(&lastReport));
+        if(TIME_MILLIS < (timestampLastReport + (unsigned long) 1000)) {             
+            memcpy(XpadReport, &lastReportReceived, sizeof(lastReportReceived));
         }
     }
 
     XpadReport->LENGTH =  0x14;
-    
     *ReportSize = 0x14;
-    
     return false;
 }
     
