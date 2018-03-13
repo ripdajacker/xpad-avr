@@ -42,8 +42,10 @@ typedef struct {
     uint8_t UNUSED_0;
     uint8_t LENGTH; // always 0x06
 
-    uint16_t LEFT_RUMBLE;
-    uint16_t RIGHT_RUMBLE;
+    uint8_t LEFT_RUMBLE;
+    uint8_t RIGHT_RUMBLE;
+
+    uint8_t PADDING[16];
 } USB_XpadRumble_Data_t;
 
 

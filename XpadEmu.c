@@ -1,6 +1,9 @@
-#include <SerialGamepad.h>
-#include <XpadEmu.h>
 #include <LUFA/Drivers/Peripheral/Serial.h>
+#include <util/atomic.h>
+#include "SerialGamepad.h"
+#include "XpadEmu.h"
+#include "SpiBus.h"
+
 
 
 static const uint8_t desc1[] = {0x12, 0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x40};
@@ -15,7 +18,7 @@ void printControlRequest(char *string) {
     #endif
 }
 
-static uint8_t PrevXpadHIDReportBuffer[2 * sizeof(USB_XpadReport_Data_t)];
+static uint8_t PrevXpadHIDReportBuffer[sizeof(USB_XpadReport_Data_t)];
 
 USB_ClassInfo_HID_Device_t Xpad_HID_Interface =
 {
@@ -29,14 +32,15 @@ USB_ClassInfo_HID_Device_t Xpad_HID_Interface =
         },
         .PrevReportINBuffer           = PrevXpadHIDReportBuffer,
         .PrevReportINBufferSize       = sizeof(PrevXpadHIDReportBuffer),
-    },
+    }, 
 };
 
 int8_t state = 1;
 unsigned long TIME_MILLIS = 0;
 unsigned long lastTimestamp = 0;
 unsigned long timestampLastReport = 0;
-USB_XpadReport_Data_t lastReportReceived;
+static USB_XpadReport_Data_t lastReportReceived;
+static USB_XpadRumble_Data_t latestRumble;
 
 void flash_led(void) {
     if (TIME_MILLIS > lastTimestamp + (unsigned long) 1000) {
@@ -46,8 +50,6 @@ void flash_led(void) {
         if(state > 8) {
             state = 0;
         }
-
-        printf("i: 0x%x\n", SERIAL_GetIndex());        
 
         PORTC = 0;
         if (state % 2 == 0) {
@@ -79,9 +81,9 @@ void setup(void) {
 
     DDRC |= (1 << 7);
     
-    Serial_Init(9600, false);
-    Serial_CreateStream(NULL);
-    UCSR1B = ((1 << RXCIE1) | (1 << TXEN1) | (1 << RXEN1));
+    SPI_init();
+    SPI_setLastReport(&lastReportReceived);
+    SPI_sendRumble(&latestRumble);
     sei();
 
     USB_Init();
@@ -98,15 +100,7 @@ void EVENT_USB_Device_ConfigurationChanged(void) {
 }
 
 void EVENT_USB_Device_ControlRequest(void) {
-    printControlRequest("Processing req");
     if (USB_ControlRequest.bRequest == 0x6 ) {
-        if(USB_ControlRequest.bmRequestType == 0x80 && USB_ControlRequest.wValue == 0x100) {
-            Endpoint_ClearSETUP();
-            Endpoint_Write_Control_Stream_LE(&desc1, USB_ControlRequest.wLength);
-            Endpoint_ClearOUT();
-            return;
-        }
-
         if (USB_ControlRequest.bmRequestType == 0xC1 && USB_ControlRequest.wValue == 0x4200) {
             Endpoint_ClearSETUP();
             switch(USB_ControlRequest.wLength) {
@@ -123,7 +117,8 @@ void EVENT_USB_Device_ControlRequest(void) {
             Endpoint_ClearOUT();
             return;
         }        
-    } 
+
+    }
     HID_Device_ProcessControlRequest(&Xpad_HID_Interface);    
 }
 
@@ -136,18 +131,8 @@ void EVENT_USB_Device_StartOfFrame(void) {
 bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t *const HIDInterfaceInfo, uint8_t *const ReportID, const uint8_t ReportType, void *ReportData,uint16_t *const ReportSize) {
     USB_XpadReport_Data_t *XpadReport = (USB_XpadReport_Data_t *) ReportData;
  
-    if(SERIAL_IsReportReady()) {        
-        SERIAL_ReadReport(&lastReportReceived);
-     
-        printf("Got a report A: %x, B: %x\n", lastReportReceived.BUTTON_A, lastReportReceived.BUTTON_B);
-
-        timestampLastReport = TIME_MILLIS;
-    }
-    
-    if(timestampLastReport != 0) {
-        if(TIME_MILLIS < (timestampLastReport + (unsigned long) 1000)) {             
-            memcpy(XpadReport, &lastReportReceived, sizeof(lastReportReceived));
-        }
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        memcpy(XpadReport, &lastReportReceived, sizeof(lastReportReceived));
     }
 
     XpadReport->LENGTH =  0x14;
@@ -159,5 +144,7 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t *const HIDIn
 void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t *const HIDInterfaceInfo, const uint8_t ReportID, const uint8_t ReportType, const void *ReportData, const uint16_t ReportSize) {
     printControlRequest("Set report");
     if(ReportSize == 6) {
+        latestRumble.LEFT_RUMBLE =((uint8_t *) ReportData)[3];
+        latestRumble.RIGHT_RUMBLE=((uint8_t *) ReportData)[5];
     }                        
 }

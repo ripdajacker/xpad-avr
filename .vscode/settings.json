@@ -12,6 +12,8 @@
         "power.h": "c",
         "common.h": "c",
         "stdbool.h": "c",
-        "datatypes.h": "c"
+        "datatypes.h": "c",
+        "chrono": "c",
+        "spibus.h": "c"
     }
 }
