@@ -94,7 +94,7 @@ ISR(SPI_STC_vect) {
     PORTC = 0;
     currentIndex++;
 
-    if(currentIndex == 19) {
+    if(currentIndex == 20) {
         memcpy(lastReport, &rx, sizeof(rx));
         memcpy(tx, &lastRumble, sizeof(lastRumble));
         
