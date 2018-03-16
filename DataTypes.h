@@ -31,10 +31,10 @@ typedef struct {
     uint8_t TRIGGER_LEFT;
     uint8_t TRIGGER_RIGHT;
     
-    uint16_t LEFT_STICK_X;
-    uint16_t LEFT_STICK_Y;
-    uint16_t RIGHT_STICK_X;
-    uint16_t RIGHT_STICK_Y;
+    int16_t LEFT_STICK_X;
+    int16_t LEFT_STICK_Y;
+    int16_t RIGHT_STICK_X;
+    int16_t RIGHT_STICK_Y;
 
 } USB_XpadReport_Data_t;
 
