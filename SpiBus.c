@@ -100,5 +100,4 @@ ISR(SPI_STC_vect) {
         
         currentIndex = -1;
     }
-
 }
