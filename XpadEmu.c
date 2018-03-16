@@ -1,6 +1,5 @@
 #include <LUFA/Drivers/Peripheral/Serial.h>
 #include <util/atomic.h>
-#include "SerialGamepad.h"
 #include "XpadEmu.h"
 #include "SpiBus.h"
 
