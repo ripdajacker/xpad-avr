@@ -11,6 +11,8 @@ static uint8_t currentIndex = 0;
 static uint8_t rx[20];
 static uint8_t tx[20];
 
+static const uint8_t INIT_TRANSFER_COMMAND = 0x14;
+
 #define SPI_SS_PIN PORTB0
 #define SPI_SCK_PIN PORTB1
 #define SPI_MOSI_PIN PORTB2
@@ -56,7 +58,11 @@ void SPI_init(void) {
     DDRB = (1 << PB2); // MISO
     SPCR = (1 << SPE) | (1 << SPIE);
 
-    setup_spi(SPI_MODE_1, SPI_MSB, SPI_INTERRUPT, SPI_SLAVE);
+    setup_spi(SPI_MODE_0, SPI_MSB, SPI_INTERRUPT, SPI_SLAVE);
+
+    for(int i=0; i<20; i++) {
+        tx[i]=0x14;
+    }
 }
 
 void SPI_sendRumble(USB_XpadRumble_Data_t *rumble) {
@@ -73,20 +79,26 @@ void SPI_setLastReport(USB_XpadReport_Data_t *report) {
 ISR(SPI_STC_vect) {
     PORTC |= 1 << 7;
 
-    if(currentIndex >= 19) {
-        PORTC = 0;
-        
-        currentIndex = 0;
-        if(rx[0] == 0 && rx[1] == 0x14) {
-            memcpy(lastReport, &rx, sizeof(rx));
-            memcpy(&tx, &lastRumble, sizeof(lastRumble));
+    if(currentIndex < 0) {
+        SPDR = 0xFF;
+        uint8_t data = SPDR;
+        if(data == INIT_TRANSFER_COMMAND) {
+            currentIndex = 2;
         }
         return;
     }
-    
-    uint8_t data = SPDR;
+
     SPDR = tx[currentIndex];
-    rx[currentIndex] = data;
+    rx[currentIndex] = SPDR;
+
     PORTC = 0;
     currentIndex++;
+
+    if(currentIndex == 19) {
+        memcpy(lastReport, &rx, sizeof(rx));
+        memcpy(tx, &lastRumble, sizeof(lastRumble));
+        
+        currentIndex = -1;
+    }
+
 }
