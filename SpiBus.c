@@ -8,6 +8,7 @@ static USB_XpadReport_Data_t *lastReport;
 
 
 static uint8_t currentIndex = 0;
+static uint8_t lastByte  = 0xFF;
 static uint8_t rx[20];
 static uint8_t tx[20];
 
@@ -42,15 +43,15 @@ void setup_spi(uint8_t mode, int dord, int interrupt, uint8_t clock)
     DDRB &= ~(1<<SPI_SCK_PIN);// input
 
     SPCR = ((interrupt ? 1 : 0)<<SPIE) 
-    | (1<<SPE) // enable SPI
-    | (dord<<DORD) // LSB or MSB
-    | (((clock != SPI_SLAVE) ? 1 : 0) <<MSTR) // Slave or Master
-    | (((mode & 0x02) == 2) << CPOL) // clock timing mode CPOL
-    | (((mode & 0x01)) << CPHA) // clock timing mode CPHA
-    | (((clock & 0x02) == 2) << SPR1) // cpu clock divisor SPR1
-    | ((clock & 0x01) << SPR0); // cpu clock divisor SPR0
+           | (1<<SPE) // enable SPI
+           | (dord<<DORD) // LSB or MSB
+           | (((clock != SPI_SLAVE) ? 1 : 0) <<MSTR) // Slave or Master
+           | (((mode & 0x02) == 2) << CPOL) // clock timing mode CPOL
+           | (((mode & 0x01)) << CPHA) // clock timing mode CPHA
+           | (((clock & 0x02) == 2) << SPR1) // cpu clock divisor SPR1
+           | ((clock & 0x01) << SPR0); // cpu clock divisor SPR0
   
-  SPSR = (((clock & 0x04) == 4) << SPI2X); // clock divisor SPI2X
+    SPSR = (((clock & 0x04) == 4) << SPI2X); // clock divisor SPI2X
 }
 
 
@@ -82,9 +83,11 @@ ISR(SPI_STC_vect) {
     if(currentIndex < 0) {
         SPDR = 0xFF;
         uint8_t data = SPDR;
-        if(data == INIT_TRANSFER_COMMAND) {
+        if(lastByte == 0 && data == INIT_TRANSFER_COMMAND) {
             currentIndex = 2;
         }
+
+        lastByte = data;
         return;
     }
 
@@ -94,10 +97,11 @@ ISR(SPI_STC_vect) {
     PORTC = 0;
     currentIndex++;
 
-    if(currentIndex == 19) {
+    if(currentIndex == 20) {
         memcpy(lastReport, &rx, sizeof(rx));
         memcpy(tx, &lastRumble, sizeof(lastRumble));
         
         currentIndex = -1;
+        lastByte = 0xFF;
     }
 }
