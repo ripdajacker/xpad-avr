@@ -1,12 +1,11 @@
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
 
-#include <avr/pgmspace.h>
 #include <LUFA/Drivers/USB/USB.h>
-#include <LUFA/Drivers/USB/Class/Common/HIDClassCommon.h>
+#include <avr/pgmspace.h>
 
 /**
- * The XPAD controller is a HID joystick without the HID joystick descriptor. 
+ * The XPAD controller is a HID joystick without the HID joystick descriptor.
  */
 typedef struct {
     USB_Descriptor_Configuration_Header_t Config;
@@ -18,13 +17,14 @@ typedef struct {
 
 enum StringDescriptors_t {
     STRING_ID_Language = 0,
-    STRING_ID_Manufacturer = 1, 
-    STRING_ID_Product = 2, 
+    STRING_ID_Manufacturer = 1,
+    STRING_ID_Product = 2,
 };
 
-uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue, const uint16_t wIndex, const void **const DescriptorAddress)
+uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
+                                    const uint16_t wIndex,
+                                    const void **const DescriptorAddress)
 
-ATTR_WARN_UNUSED_RESULT ATTR_NON_NULL_PTR_ARG(3);
+    ATTR_WARN_UNUSED_RESULT ATTR_NON_NULL_PTR_ARG(3);
 
 #endif
-
