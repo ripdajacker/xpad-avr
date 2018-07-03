@@ -74,8 +74,6 @@ void SPI_setLastReport(USB_XpadReport_Data_t *report) {
 }
 
 ISR(SPI_STC_vect) {
-    PORTC |= 1 << 7;
-
     if (currentIndex < 0) {
         SPDR = 0xFF;
         uint8_t data = SPDR;
@@ -90,7 +88,6 @@ ISR(SPI_STC_vect) {
     SPDR = tx[currentIndex];
     rx[currentIndex] = SPDR;
 
-    PORTC = 0;
     currentIndex++;
 
     if (currentIndex == 20) {
