@@ -157,4 +157,4 @@ void CALLBACK_HID_Device_ProcessHIDReport(
         latestRumble.LEFT_RUMBLE = ((uint8_t *)ReportData)[3];
         latestRumble.RIGHT_RUMBLE = ((uint8_t *)ReportData)[5];
     }
-}
+}                                                     
