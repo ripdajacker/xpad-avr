@@ -6,7 +6,7 @@
 static USB_XpadRumble_Data_t *lastRumble;
 static USB_XpadReport_Data_t *lastReport;
 
-static uint8_t currentIndex = 0;
+static int8_t currentIndex = 0;
 static uint8_t lastByte = 0xFF;
 static uint8_t rx[20];
 static uint8_t tx[20];
